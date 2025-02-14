@@ -17,25 +17,10 @@ jobs:
 
       - name: Log in to Render
         run: |
-          echo "Logging in to Render..."
+          echo "Triggering Render deployment..."
           curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             -d '{"serviceId": "${{ secrets.RENDER_SERVICE_ID }}"}' \
-            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
-
-      - name: Build and push Docker image
-        run: |
-          docker build -t my-fastapi-app .
-          docker tag my-fastapi-app render/my-fastapi-app
-          docker push render/my-fastapi-app
-
-      - name: Deploy to Render
-        run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            -H "Accept: application/json" \
-            -H "Content-Type: application/json" \
-            -d '{"image": "render/my-fastapi-app"}' \
             https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
