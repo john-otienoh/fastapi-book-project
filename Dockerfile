@@ -2,7 +2,7 @@
 FROM python:3.9-slim
 
 # Set the working directory
-WORKDIR /app
+WORKDIR /
 
 # Copy the requirements file
 COPY requirements.txt .
@@ -23,4 +23,4 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 
 # Start Nginx and FastAPI
-CMD service nginx start && uvicorn app.main:app --host 0.0.0.0 --port 8000
+CMD ["sh", "-c", "service nginx start && uvicorn main:app --host 127.0.0.1 --port 8000"]
