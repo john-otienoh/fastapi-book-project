@@ -1,7 +1,10 @@
 name: CD Pipeline
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -9,40 +12,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Update package index and install dependencies
-            sudo apt-get update -y
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
 
-            # Add Docker's official GPG key
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      - name: Log in to Render
+        run: |
+          echo "Logging in to Render..."
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d '{"serviceId": "${{ secrets.RENDER_SERVICE_ID }}"}' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
 
-            # Install Docker
-            sudo apt-get update -y
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+      - name: Build and push Docker image
+        run: |
+          docker build -t my-fastapi-app .
+          docker tag my-fastapi-app render/my-fastapi-app
+          docker push render/my-fastapi-app
 
-            # Add the SSH user to the Docker group
-            sudo usermod -aG docker ${{ secrets.SSH_USERNAME }}
-
-            # Install Docker Compose
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-
-            # Verify installations
-            docker --version
-            docker-compose --version
-
-            # Navigate to the project directory and deploy
-            cd /home/ubuntu/
-            git clone https://github.com/john-otienoh/fastapi-book-project
-            cd fastapi-book-project/
-            git fetch origin main
-            git reset --hard origin/main
-            docker-compose up -d --build
+      - name: Deploy to Render
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d '{"image": "render/my-fastapi-app"}' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
